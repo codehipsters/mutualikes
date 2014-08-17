@@ -1,5 +1,5 @@
 {
-  "name": "snowanalytics",
+  "name": "mutualikes-grabber",
   "version": "0.0.0",
   "description": "",
   "main": "index.js",
@@ -11,10 +11,8 @@
   "dependencies": {
     "async": "~0.2.9",
     "cli-table": "~0.2.0",
-    "express": "~3.4.8",
     "instagram-node-lib": "~0.1.1",
     "lodash": "~2.4.1",
-    "moment": "~2.5.0",
     "multimeter": "^0.1.1",
     "nconf": "~0.6.9"
   }
