@@ -45,39 +45,63 @@ instaRequest = (methodname, options, done) ->
   m = methodname.split '.'
   Instagram[m[0]][m[1]](options)
 
+
+###
+# Получает фоточки с паджинацией
+###
+userCatchPhotos = (user, done) ->
+  user.photos = []
+
+  lastMaxId = null
+  processed = 0
+  total     = user.counts.media
+
+  async.doWhilst (done_portion) ->
+    options =
+      user_id: user.id
+      count: 30
+    options.max_id = lastMaxId if lastMaxId
+
+    instaRequest 'users.recent', options, (err, photos, pagination) ->
+      lastMaxId = pagination.next_max_id
+
+      async.eachSeries photos, (photo, done_photo) ->
+        media_id = photo.id
+
+        instaRequest 'media.likes', { media_id }, (err, likes) ->
+          console.log "(#{++processed}/#{total}) #{likes.length}♡ #{photo.link} #{photo.caption?.text}"
+          user.photos.push _.extend(photo, { likes })
+          done_photo null
+
+      , (err, photos) ->
+        done_portion null
+  , ->
+    processed < total
+  , ->
+    done null, user
+
+
 ###
 # Получает все лайки последних фотографий списка пользователей
 ###
-userPhotos = (user, done) ->
-  instaRequest 'users.search', { q: user, count: 1 }, (err, users_info) ->
+userPhotos = (username, done) ->
+  instaRequest 'users.search', { q: username, count: 1 }, (err, users_info) ->
     user_info = users_info[0]
     user_id   = user_info.id
 
-    console.log "Получаем список фоток братюни @#{user_info.username}"
+    instaRequest 'users.info', { user_id }, (err, user) ->
+      console.log "Братюня @#{user.username} (id: #{user_id}) сделал #{user.counts.media} постов."
+      console.log "Красавчик! Ну что, подожди тогда, сейчас все сделаю."
 
-    instaRequest 'users.recent', { user_id }, (err, photos) ->
-      done null, _.extend(user_info, { photos })
+      userCatchPhotos user, done
 
+###
+# Rock the joint!
+###
 userPhotos argv.user, (err, user) ->
-  total = user.photos.length
-  idx   = 0
-
-  multi = multimeter(process)
-  multi.drop { width: 30 }, (bar) ->
-    async.eachSeries user.photos, (photo, done) ->
-      media_id = photo.id
-
-      instaRequest 'media.likes', { media_id }, (err, likes) ->
-        bar.ratio ++idx, total, "#{likes.length}♡ #{photo.link}"
-        photo.likes = likes
-        done null
-    , (err) ->
-      multi.destroy()
-
-      outFilename = "#{user.username}.json"
-      fs.writeFile outFilename, JSON.stringify(user, null, 2), (err) ->
-        console.log "\nГотово, братишка! Записал все дерьмо в #{outFilename}"
-
+  outFilename = "#{user.username}.json"
+  fs.writeFile outFilename, JSON.stringify(user, null, 2), (err) ->
+    console.log "\nГотово, братишка! Записал все дерьмо в #{outFilename}"
 
 
 
